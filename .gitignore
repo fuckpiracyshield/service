@@ -4,3 +4,10 @@ eggs/
 .eggs/
 *.egg
 *.egg-info/
+
+# Rust
+
+debug/
+target/
+Cargo.lock
+**/*.rs.bk
