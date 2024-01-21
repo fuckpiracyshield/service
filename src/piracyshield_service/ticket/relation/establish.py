@@ -127,8 +127,6 @@ class TicketRelationEstablishService(BaseService):
             value = value
         )
 
-        print(" r -> ", found_tickets)
-
         # no ticket item found
         if not len(found_tickets):
             return False
@@ -137,7 +135,6 @@ class TicketRelationEstablishService(BaseService):
         if len(found_tickets):
             # but let's search for a ticket error in this case
             for ticket_blocking in found_tickets:
-                print(" tb -> ", ticket_blocking)
                 ticket_errors = self.ticket_error_get_by_ticket_service.execute(
                     ticket_blocking.get('ticket_id')
                 )
@@ -145,11 +142,8 @@ class TicketRelationEstablishService(BaseService):
                 # found one, let's search for our item
                 if len(ticket_errors):
                     for ticket_error_response in ticket_errors:
-                        print(ticket_error_response)
-                        print(ticket_error_response.get(genre))
-
                         # found the item, so we don't have any duplicate
-                        if value in ticket_error_response.get(genre):
+                        if genre in ticket_error_response and ticket_error_response.get(genre) and value in ticket_error_response.get(genre):
                             return False
 
         return True

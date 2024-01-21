@@ -5,14 +5,14 @@ from piracyshield_service.base import BaseService
 from piracyshield_component.config import Config
 from piracyshield_component.exception import ApplicationException
 
-from piracyshield_data_storage.security.memory import SecurityMemory, SecurityMemorySetException, SecurityMemoryGetException
+from piracyshield_data_storage.security.blacklist.memory import SecurityBlacklistMemory, SecurityBlacklistMemorySetException, SecurityBlacklistMemoryGetException
 
 from piracyshield_service.security.errors import SecurityErrorCode, SecurityErrorMessage
 
-class SecurityBlacklistCreateService(BaseService):
+class SecurityBlacklistAddRefreshTokenService(BaseService):
 
     """
-    Blacklists an item.
+    Blacklists a refresh token.
     """
 
     blacklist_config = None
@@ -30,14 +30,14 @@ class SecurityBlacklistCreateService(BaseService):
 
         self._prepare_modules()
 
-    def execute(self, item: str, duration: int) -> bool | Exception:
-        response = self.data_memory.add_to_blacklist(
-            item = item,
+    def execute(self, refresh_token: str, duration: int) -> bool | Exception:
+        response = self.data_memory.add_refresh_token(
+            refresh_token = refresh_token,
             duration = duration
         )
 
         if response == True:
-            self.logger.warning(f"Blacklist item `{item}` has been created for {duration} seconds")
+            self.logger.warning(f"New refresh token has been blacklisted for {duration} seconds")
 
             return True
 
@@ -61,6 +61,6 @@ class SecurityBlacklistCreateService(BaseService):
         Initialize and set the instances.
         """
 
-        self.data_memory = SecurityMemory(
+        self.data_memory = SecurityBlacklistMemory(
             database = self.blacklist_config.get('database').get('memory_database')
         )

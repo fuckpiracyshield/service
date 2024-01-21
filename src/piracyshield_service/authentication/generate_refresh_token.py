@@ -16,7 +16,7 @@ class AuthenticationGenerateRefreshTokenService(BaseService):
 
     token = None
 
-    jwt_config = None
+    jwt_token_config = None
 
     def __init__(self):
         """
@@ -49,7 +49,7 @@ class AuthenticationGenerateRefreshTokenService(BaseService):
         Loads the configs.
         """
 
-        self.jwt_config = Config('security/token').get('jwt_token')
+        self.jwt_token_config = Config('security/token').get('jwt_token')
 
     def _prepare_modules(self) -> None:
         """
@@ -57,9 +57,9 @@ class AuthenticationGenerateRefreshTokenService(BaseService):
         """
 
         self.token = JWTToken(
-            access_secret_key = self.jwt_config.get('access_secret_key'),
-            refresh_secret_key = self.jwt_config.get('refresh_secret_key'),
-            access_expiration_time = self.jwt_config.get('access_expiration_time'),
-            refresh_expiration_time = self.jwt_config.get('refresh_expiration_time'),
-            algorithm = self.jwt_config.get('algorithm')
+            access_secret_key = self.jwt_token_config.get('access_secret_key'),
+            refresh_secret_key = self.jwt_token_config.get('refresh_secret_key'),
+            access_expiration_time = self.jwt_token_config.get('access_expiration_time'),
+            refresh_expiration_time = self.jwt_token_config.get('refresh_expiration_time'),
+            algorithm = self.jwt_token_config.get('algorithm')
         )

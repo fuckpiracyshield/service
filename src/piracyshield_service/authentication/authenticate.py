@@ -11,6 +11,10 @@ from piracyshield_data_model.authentication.model import AuthenticationModel, Au
 from piracyshield_data_storage.authentication.storage import AuthenticationStorage, AuthenticationStorageGetException
 
 from piracyshield_service.authentication.get import AuthenticationGetService
+from piracyshield_service.authentication.generate_access_token import AuthenticationGenerateAccessTokenService
+from piracyshield_service.authentication.generate_refresh_token import AuthenticationGenerateRefreshTokenService
+
+from piracyshield_service.account.session.create import AccountSessionCreateService
 
 from piracyshield_service.security.anti_brute_force import SecurityAntiBruteForceService
 
@@ -21,6 +25,12 @@ class AuthenticationAuthenticateService(BaseService):
     """
     Credentials based authentication.
     """
+
+    authentication_generate_access_token_service = None
+
+    authentication_generate_refresh_token_service = None
+
+    account_session_create_service = None
 
     security_anti_brute_force_service = None
 
@@ -33,8 +43,6 @@ class AuthenticationAuthenticateService(BaseService):
     hasher = None
 
     hasher_config = None
-
-    login_config = None
 
     def __init__(self):
         """
@@ -73,7 +81,22 @@ class AuthenticationAuthenticateService(BaseService):
 
         self.logger.debug(f"Account `{account.get('email')}` correctly authenticated.")
 
-        return self._build_payload(account)
+        # get the payload to encode
+        payload = self._build_payload(account)
+
+        # generate token pairs
+        refresh_token = self.authentication_generate_refresh_token_service.execute(payload)
+        access_token = self.authentication_generate_access_token_service.execute(payload)
+
+        # create a new session for this account
+        self.account_session_create_service.execute(
+            account_id = account.get('account_id'),
+            refresh_token = refresh_token,
+            access_token = access_token,
+            ip_address = ip_address
+        )
+
+        return (access_token, refresh_token)
 
     def _verify_password(self, password: str, hashed_password: str) -> bool:
         """
@@ -127,9 +150,9 @@ class AuthenticationAuthenticateService(BaseService):
         Loads the configs.
         """
 
-        self.security_anti_brute_force_config = Config('security/anti_brute_force').get('general')
-
         self.hasher_config = Config('security/token').get('hasher')
+
+        self.security_anti_brute_force_config = Config('security/anti_brute_force').get('general')
 
     def _prepare_modules(self) -> None:
         """
@@ -137,6 +160,8 @@ class AuthenticationAuthenticateService(BaseService):
         """
 
         self.data_model = AuthenticationModel
+
+        self.data_storage = AuthenticationStorage()
 
         self.hasher = Hasher(
             time_cost = self.hasher_config.get('time_cost'),
@@ -146,8 +171,12 @@ class AuthenticationAuthenticateService(BaseService):
             salt_length = self.hasher_config.get('salt_length')
         )
 
-        self.data_storage = AuthenticationStorage()
-
         self.authentication_get_service = AuthenticationGetService()
+
+        self.authentication_generate_access_token_service = AuthenticationGenerateAccessTokenService()
+
+        self.authentication_generate_refresh_token_service = AuthenticationGenerateRefreshTokenService()
+
+        self.account_session_create_service = AccountSessionCreateService()
 
         self.security_anti_brute_force_service = SecurityAntiBruteForceService()
