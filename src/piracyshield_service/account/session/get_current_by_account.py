@@ -53,7 +53,7 @@ class AccountSessionGetCurrentByAccountService(BaseService):
 
                 # TODO: need to deal with this in the storage.
                 # let's save the long session as well
-                long_session = self.data_memory.get_session(f'session:{account_id}:long:{session.get('refresh_token')}')
+                long_session = self.data_memory.get_session(f"session:{account_id}:long:{session.get('refresh_token')}")
 
                 long_session['token'] = session.get('refresh_token')
 

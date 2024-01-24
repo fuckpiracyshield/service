@@ -37,6 +37,10 @@ class TicketItemIPv6GetAllByTicketChecksumService(BaseService):
 
         response = self.get_ipv6_all_by_ticket(ticket_id)
 
+        # we don't have any data to work on
+        if not len(response):
+            raise ApplicationException(TicketItemErrorCode.TICKET_ITEM_EMPTY_CHECKSUM, TicketItemErrorMessage.TICKET_ITEM_EMPTY_CHECKSUM)
+
         data = '\n'.join(response)
 
         try:

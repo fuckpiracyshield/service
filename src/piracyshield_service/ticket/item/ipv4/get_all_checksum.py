@@ -28,7 +28,7 @@ class TicketItemIPv4GetAllChecksumService(BaseService):
 
         self._prepare_modules()
 
-    def execute(self, ticket_id: str) -> dict | Exception:
+    def execute(self) -> dict | Exception:
         """
         Get the checksum of all the IPv4 items in the database.
 
@@ -36,6 +36,10 @@ class TicketItemIPv4GetAllChecksumService(BaseService):
         """
 
         response = self.ticket_item_ipv4_get_all_service.execute()
+
+        # we don't have any data to work on
+        if not len(response):
+            raise ApplicationException(TicketItemErrorCode.TICKET_ITEM_EMPTY_CHECKSUM, TicketItemErrorMessage.TICKET_ITEM_EMPTY_CHECKSUM)
 
         data = '\n'.join(response)
 

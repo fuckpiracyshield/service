@@ -39,6 +39,10 @@ class TicketItemIPv4GetAllByTicketChecksumService(BaseService):
             ticket_id = ticket_id
         )
 
+        # we don't have any data to work on
+        if not len(response):
+            raise ApplicationException(TicketItemErrorCode.TICKET_ITEM_EMPTY_CHECKSUM, TicketItemErrorMessage.TICKET_ITEM_EMPTY_CHECKSUM)
+
         data = '\n'.join(response)
 
         try:

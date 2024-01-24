@@ -40,6 +40,10 @@ class TicketItemFQDNGetAllByTicketChecksumForProviderService(BaseService):
             account_id = account_id
         )
 
+        # we don't have any data to work on
+        if not len(response):
+            raise ApplicationException(TicketItemErrorCode.TICKET_ITEM_EMPTY_CHECKSUM, TicketItemErrorMessage.TICKET_ITEM_EMPTY_CHECKSUM)
+
         data = '\n'.join(response)
 
         try:

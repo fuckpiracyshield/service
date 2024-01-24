@@ -129,6 +129,7 @@ class TicketCreateService(BaseService):
         )
 
         # proceed to build the relation item <-> provider
+        # this part provides a check for duplicates, whitelisted items and error tickets
         (fqdn_ticket_items, ipv4_ticket_items, ipv6_ticket_items) = self.ticket_relation_establish_service.execute(
             ticket_id = model.get('ticket_id'),
             providers = model.get('assigned_to'),
@@ -150,7 +151,8 @@ class TicketCreateService(BaseService):
             ipv6 = ipv6,
             now = Time.now_iso8601(),
             created_by = created_by,
-            tasks = [   # append the task id so we can cancel its execution if needed
+            tasks = [
+                # append the task id so we can cancel its execution if needed
                 initialize_job_id,
                 autoclose_job_id
             ]

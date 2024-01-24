@@ -23,6 +23,8 @@ class TicketItemErrorCode:
 
     TICKET_ITEM_UPDATE_TIME_EXCEEDED = '5010'
 
+    TICKET_ITEM_EMPTY_CHECKSUM = '5011'
+
 class TicketItemErrorMessage:
 
     GENERIC = 'Error during the creation of the ticket item.'
@@ -46,3 +48,5 @@ class TicketItemErrorMessage:
     TICKET_ITEM_REASON_NON_VALID = 'Non valid unprocessed reason.'
 
     TICKET_ITEM_UPDATE_TIME_EXCEEDED = 'Cannot update the ticket item: max update time has been exceeded.'
+
+    TICKET_ITEM_EMPTY_CHECKSUM = 'No ticket item available to generate a checksum.'
