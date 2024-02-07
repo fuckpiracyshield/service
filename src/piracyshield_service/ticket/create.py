@@ -22,18 +22,27 @@ from piracyshield_data_model.ticket.model import (
     TicketModelAssignedToNonValidException
 )
 
-from piracyshield_data_model.ticket.status.model import TicketStatusModel
-
-from piracyshield_service.ticket.relation.establish import TicketRelationEstablishService
-from piracyshield_service.ticket.relation.abandon import TicketRelationAbandonService
+from piracyshield_data_model.ticket.item.model import (
+    TicketItemModel,
+    TicketItemModelTicketIdentifierNonValidException,
+    TicketItemModelTicketItemIdentifierNonValidException,
+    TicketItemModelGenreNonValidException,
+    TicketItemModelFQDNMissingException,
+    TicketItemModelFQDNNonValidException,
+    TicketItemModelIPv4MissingException,
+    TicketItemModelIPv4NonValidException,
+    TicketItemModelIPv6MissingException,
+    TicketItemModelIPv6NonValidException,
+    TicketItemModelProviderIdentifierMissingException,
+    TicketItemModelProviderIdentifierNonValidException
+)
 
 from piracyshield_data_storage.ticket.storage import TicketStorage, TicketStorageCreateException
 
-from piracyshield_service.provider.get_all import ProviderGetAllService
+from piracyshield_service.provider.get_active import ProviderGetActiveService
 from piracyshield_service.provider.exists_by_identifier import ProviderExistsByIdentifierService
 
-from piracyshield_service.ticket.tasks.ticket_initialize import ticket_initialize_task_caller
-from piracyshield_service.ticket.tasks.ticket_autoclose import ticket_autoclose_task_caller
+from piracyshield_service.ticket.tasks.ticket_create import ticket_create_task_caller
 
 from piracyshield_service.log.ticket.create import LogTicketCreateService
 
@@ -43,6 +52,7 @@ from piracyshield_service.forensic.remove_by_ticket import ForensicRemoveByTicke
 from piracyshield_service.dda.is_assigned_to_account import DDAIsAssignedToAccountService
 
 from piracyshield_service.ticket.errors import TicketErrorCode, TicketErrorMessage
+from piracyshield_service.ticket.item.errors import TicketItemErrorCode, TicketItemErrorMessage
 
 from datetime import datetime, timedelta
 
@@ -58,13 +68,11 @@ class TicketCreateService(BaseService):
 
     log_ticket_create_service = None
 
-    ticket_relation_establish_service = None
-
-    ticket_relation_abandon_service = None
-
     provider_exists_by_identifier_service = None
 
-    provider_get_all_service = None
+    provider_get_active_service = None
+
+    ticket_item_data_model = None
 
     data_model = None
 
@@ -92,6 +100,23 @@ class TicketCreateService(BaseService):
         created_by: str,
         description: str = None
     ) -> tuple | Exception:
+        # filter duplicates
+        fqdn = list(set(fqdn))
+        ipv4 = list(set(ipv4))
+        ipv6 = list(set(ipv6))
+        assigned_to = list(set(assigned_to))
+
+        # TODO: do not hardcode this.
+        # do not procees if ticket items exceed maximum limits
+        if len(fqdn) > 1000:
+            raise ApplicationException(TicketErrorCode.TOO_MANY_FQDN, TicketErrorMessage.TOO_MANY_FQDN)
+
+        if len(ipv4) > 1000:
+            raise ApplicationException(TicketErrorCode.TOO_MANY_IPV4, TicketErrorMessage.TOO_MANY_IPV4)
+
+        if len(ipv6) > 1000:
+            raise ApplicationException(TicketErrorCode.TOO_MANY_IPV6, TicketErrorMessage.TOO_MANY_IPV6)
+
         model = self._validate_parameters(
             ticket_id = self._generate_ticket_id(),
             dda_id = dda_id,
@@ -102,46 +127,58 @@ class TicketCreateService(BaseService):
             assigned_to = assigned_to
         )
 
-        # check if the DDA identifier is assigned to this account
-        if self.dda_is_assigned_to_account_service.execute(
-            dda_id = dda_id,
-            account_id = created_by
-        ) == False:
-            raise ApplicationException(TicketErrorCode.UNKNOWN_DDA_IDENTIFIER, TicketErrorMessage.UNKNOWN_DDA_IDENTIFIER)
+        # formal validation before going on with the creation process
+        if fqdn:
+            for fqdn_value in fqdn:
+                self._validate_ticket_item(
+                    ticket_id = model.get('ticket_id'),
+                    value = fqdn_value,
+                    genre = 'fqdn'
+                )
 
-        # if specified, validate each provider_id
-        if assigned_to:
+        if ipv4:
+            for ipv4_value in ipv4:
+                self._validate_ticket_item(
+                    ticket_id = model.get('ticket_id'),
+                    value = ipv4_value,
+                    genre = 'ipv4'
+                )
+
+        if ipv6:
+            for ipv6_value in ipv6:
+                self._validate_ticket_item(
+                    ticket_id = model.get('ticket_id'),
+                    value = ipv6_value,
+                    genre = 'ipv6'
+                )
+
+        # verify DDA
+        self._verify_dda(
+            dda_id = dda_id,
+            created_by = created_by
+        )
+
+        if len(assigned_to):
+            # if specified, validate each provider identifier
             self._verify_assigned_to(assigned_to)
+
+            model['assigned_to'] = assigned_to
 
         # otherwise collect all the providers and assign them to the ticket
         else:
-            providers = self.provider_get_all_service.execute()
-
             model['assigned_to'] = []
 
-            for provider in providers:
-                model['assigned_to'].append(provider.get('account_id'))
+            active_providers = self.provider_get_active_service.execute()
+
+            for provider in active_providers:
+                provider_id = provider.get('account_id')
+
+                model['assigned_to'].append(provider_id)
 
         self.forensic_create_hash_service.execute(
             ticket_id = model.get('ticket_id'),
             hash_list = forensic_evidence.get('hash'),
             reporter_id = created_by
-        )
-
-        # proceed to build the relation item <-> provider
-        # this part provides a check for duplicates, whitelisted items and error tickets
-        (fqdn_ticket_items, ipv4_ticket_items, ipv6_ticket_items) = self.ticket_relation_establish_service.execute(
-            ticket_id = model.get('ticket_id'),
-            providers = model.get('assigned_to'),
-            fqdn = model.get('fqdn') or None,
-            ipv4 = model.get('ipv4') or None,
-            ipv6 = model.get('ipv6') or None
-        )
-
-        (initialize_job_id, autoclose_job_id) = self._schedule_task(
-            ticket_id = model.get('ticket_id'),
-            revoke_time = model.get('settings').get('revoke_time'),
-            autoclose_time = model.get('settings').get('autoclose_time')
         )
 
         document = self._build_document(
@@ -150,12 +187,7 @@ class TicketCreateService(BaseService):
             ipv4 = ipv4,
             ipv6 = ipv6,
             now = Time.now_iso8601(),
-            created_by = created_by,
-            tasks = [
-                # append the task id so we can cancel its execution if needed
-                initialize_job_id,
-                autoclose_job_id
-            ]
+            created_by = created_by
         )
 
         try:
@@ -163,13 +195,7 @@ class TicketCreateService(BaseService):
             self.data_storage.insert(document)
 
         except TicketStorageCreateException as e:
-            self.ticket_relation_abandon_service.execute(model.get('ticket_id'))
-
             self.forensic_remove_by_ticket_service.execute(model.get('ticket_id'))
-
-            # clean created tasks
-            for single_task in document.get('tasks'):
-                self.task_service.remove(single_task)
 
             self.logger.error(f'Could not create the ticket')
 
@@ -182,6 +208,11 @@ class TicketCreateService(BaseService):
         )
 
         self.logger.info(f'Ticket `{model.get("ticket_id")}` created by `{document.get("metadata").get("created_by")}`')
+
+        # initialize the creation of the ticket items
+        self._schedule_task(
+            ticket_data = model
+        )
 
         return (
             # ticket identifier
@@ -198,6 +229,16 @@ class TicketCreateService(BaseService):
 
         return self.identifier.generate()
 
+    def _verify_dda(self, dda_id: str, created_by: str) -> bool | Exception:
+        # check if the DDA identifier is assigned to this account
+        if self.dda_is_assigned_to_account_service.execute(
+            dda_id = dda_id,
+            account_id = created_by
+        ) == False:
+            raise ApplicationException(TicketErrorCode.UNKNOWN_DDA_IDENTIFIER, TicketErrorMessage.UNKNOWN_DDA_IDENTIFIER)
+
+        return True
+
     def _verify_assigned_to(self, assigned_to: list) -> bool | Exception:
         """
         Verifies each provider in the list.
@@ -206,19 +247,15 @@ class TicketCreateService(BaseService):
         :return: true if correct, exception if not.
         """
 
-        try:
-            for provider_id in assigned_to:
-                if self.provider_exists_by_identifier_service.execute(
-                    account_id = provider_id
-                ) == False:
-                    raise ApplicationException(TicketErrorCode.NON_EXISTENT_ASSIGNED_TO, TicketErrorMessage.NON_EXISTENT_ASSIGNED_TO)
+        for provider_id in assigned_to:
+            if self.provider_exists_by_identifier_service.execute(
+                account_id = provider_id
+            ) == False:
+                self.logger.error(f'Could not get assigned accounts: `{assigned_to}`')
+
+                raise ApplicationException(TicketErrorCode.NON_EXISTENT_ASSIGNED_TO, TicketErrorMessage.NON_EXISTENT_ASSIGNED_TO)
 
             return True
-
-        except:
-            self.logger.error(f'Could not get assigned accounts: `{assigned_to}`')
-
-            raise ApplicationException(TicketErrorCode.GENERIC, TicketErrorMessage.GENERIC, e)
 
     def _build_document(
         self,
@@ -226,7 +263,6 @@ class TicketCreateService(BaseService):
         fqdn: list,
         ipv4: list,
         ipv6: list,
-        tasks: list,
         now: str,
         created_by: str
     ):
@@ -241,7 +277,7 @@ class TicketCreateService(BaseService):
             'status': model.get('status'),
             'assigned_to': model.get('assigned_to'),
             'settings': model.get('settings'),
-            'tasks': tasks,
+            'tasks': [],
             'metadata': {
                 # creation date
                 'created_at': now,
@@ -254,31 +290,16 @@ class TicketCreateService(BaseService):
             }
         }
 
-    def _schedule_task(self, ticket_id: str, revoke_time: int, autoclose_time: int) -> tuple | Exception:
-        # schedule the initialization of the ticket
-        # move the ticket status to open after X seconds and perform the initial operations
+    def _schedule_task(self, ticket_data: dict) -> None | Exception:
         try:
-            initialize_job_id = self.task_service.create(
-                task_caller = ticket_initialize_task_caller,
-                delay = revoke_time,
-                ticket_id = ticket_id
+            self.task_service.create(
+                task_caller = ticket_create_task_caller,
+                delay = 1,
+                ticket_data = ticket_data
             )
-
-            # move the ticket status to close after X seconds
-            autoclose_job_id = self.task_service.create(
-                task_caller = ticket_autoclose_task_caller,
-                delay = autoclose_time,
-                ticket_id = ticket_id
-            )
-
-            return (initialize_job_id, autoclose_job_id)
 
         except Exception as e:
-            self.ticket_relation_abandon_service.execute(ticket_id)
-
-            self.forensic_remove_by_ticket_service.execute(ticket_id)
-
-            self.logger.error(f'Could not create the task for `{ticket_id}`')
+            self.logger.error(f'Could not create ticket items for `{ticket_data.get("ticket_id")}`')
 
             raise ApplicationException(TicketErrorCode.GENERIC, TicketErrorMessage.GENERIC, e)
 
@@ -335,25 +356,44 @@ class TicketCreateService(BaseService):
         except TicketModelAssignedToNonValidException:
             raise ApplicationException(TicketErrorCode.NON_VALID_ASSIGNED_TO, TicketErrorMessage.NON_VALID_ASSIGNED_TO)
 
+    def _validate_ticket_item(self, ticket_id: str, value: str, genre: str) -> dict | Exception:
+        try:
+            self.ticket_item_data_model(
+                ticket_id = ticket_id, # placeholder
+                ticket_item_id = ticket_id, # placeholder
+                provider_id = ticket_id, # placeholder
+                value = value,
+                genre = genre,
+                is_active = False, # placeholder
+                is_duplicate = False, # placeholder
+                is_whitelisted = False, # placeholder
+                is_error = False # placeholder
+            )
+
+            return True
+
+        except Exception as e:
+            self.logger.error(f'Could not create the ticket item `{value}` for `{ticket_id}`')
+
+            raise ApplicationException(TicketItemErrorCode.GENERIC, TicketItemErrorMessage.GENERIC, e)
+
     def _prepare_configs(self):
         pass
 
     def _prepare_modules(self):
         self.data_model = TicketModel
 
+        self.ticket_item_data_model = TicketItemModel
+
         self.data_storage = TicketStorage()
 
         self.identifier = Identifier()
-
-        self.ticket_relation_establish_service = TicketRelationEstablishService()
-
-        self.ticket_relation_abandon_service = TicketRelationAbandonService()
 
         self.forensic_create_hash_service = ForensicCreateHashService()
 
         self.forensic_remove_by_ticket_service = ForensicRemoveByTicketService()
 
-        self.provider_get_all_service = ProviderGetAllService()
+        self.provider_get_active_service = ProviderGetActiveService()
 
         self.provider_exists_by_identifier_service = ProviderExistsByIdentifierService()
 

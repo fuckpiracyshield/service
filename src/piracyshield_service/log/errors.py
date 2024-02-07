@@ -1,7 +1,7 @@
 
 class LogErrorCode:
 
-    GENERIC = '8000'
+    GENERIC = '1300'
 
 class LogErrorMessage:
 

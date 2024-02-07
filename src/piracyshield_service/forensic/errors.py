@@ -1,23 +1,24 @@
 
 class ForensicErrorCode:
 
-    GENERIC = '9001'
+    GENERIC = '9000'
 
-    ARCHIVE_NAME = '9002'
+    ARCHIVE_NAME = '9001'
 
-    HASH_TYPE_NOT_SUPPORTED = '9003'
+    HASH_TYPE_NOT_SUPPORTED = '9002'
 
-    HASH_STRING_EMPTY = '9004'
+    HASH_STRING_EMPTY = '9003'
 
-    HASH_STRING_NON_VALID = '9005'
+    HASH_STRING_NON_VALID = '9004'
 
-    HASH_STRING_EXISTS = '9006'
+    NO_HASH_FOR_TICKET = '9005'
 
-    NO_HASH_FOR_TICKET = '9007'
+    EXTENSION_NOT_SUPPORTED = '9006'
 
 class ForensicErrorMessage:
 
-    GENERIC = 'Error during the handling of the forensic evidence.'
+    # error during the handling of the forensic evidence
+    GENERIC = 'Generic error.'
 
     ARCHIVE_NAME = 'The archive name contains non valid characters.'
 
@@ -27,6 +28,6 @@ class ForensicErrorMessage:
 
     HASH_STRING_NON_VALID = 'Forensic evidence hash non valid.'
 
-    HASH_STRING_EXISTS = 'The hash string value is already present, meaning that this forensic evidence archive has already been submitted.'
-
     NO_HASH_FOR_TICKET = 'This ticket does not have any forensic evidence hash.'
+
+    EXTENSION_NOT_SUPPORTED = 'The file extension is not supported.'

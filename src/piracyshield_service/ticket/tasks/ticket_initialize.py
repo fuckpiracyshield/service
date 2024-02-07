@@ -2,7 +2,7 @@ from piracyshield_service.task.base import BaseTask
 
 from piracyshield_data_model.ticket.status.model import TicketStatusModel
 
-from piracyshield_data_storage.ticket.storage import TicketStorage, TicketStorageUpdateException
+from piracyshield_data_storage.ticket.storage import TicketStorage
 
 from piracyshield_service.log.ticket.create import LogTicketCreateService
 
@@ -32,19 +32,9 @@ class TicketInitializeTask(BaseTask):
         # TODO: must check if the ticket exists.
 
         # change status
-        try:
-            self.ticket_storage.update_status(
-                ticket_id = self.ticket_id,
-                ticket_status = TicketStatusModel.OPEN.value
-            )
-
-        except TicketStorageUpdateException:
-            self.logger.error(f'Could not update the ticket `{self.ticket_id}`')
-
-        # log the operation
-        self.log_ticket_create_service.execute(
+        self.ticket_storage.update_status(
             ticket_id = self.ticket_id,
-            message = f'Changed status to `{TicketStatusModel.OPEN.value}`.'
+            ticket_status = TicketStatusModel.OPEN.value
         )
 
     def before_run(self):
@@ -56,10 +46,19 @@ class TicketInitializeTask(BaseTask):
         self.log_ticket_create_service = LogTicketCreateService()
 
     def after_run(self):
-        pass
+        # log the operation
+        self.log_ticket_create_service.execute(
+            ticket_id = self.ticket_id,
+            message = f'Changed status to `{TicketStatusModel.OPEN.value}`.'
+        )
 
     def on_failure(self):
-        pass
+        self.logger.error(f'Could not update the ticket `{self.ticket_id}`')
+
+        self.ticket_storage.update_status(
+            ticket_id = self.ticket_id,
+            ticket_status = TicketStatusModel.CREATED.value
+        )
 
 def ticket_initialize_task_caller(**kwargs):
     t = TicketInitializeTask(**kwargs)

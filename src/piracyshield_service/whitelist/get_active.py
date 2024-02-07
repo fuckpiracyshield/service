@@ -8,10 +8,12 @@ from piracyshield_data_storage.whitelist.storage import WhitelistStorage, Whitel
 
 from piracyshield_service.whitelist.errors import WhitelistErrorCode, WhitelistErrorMessage
 
-class WhitelistGetGlobalService(BaseService):
+class WhitelistGetActiveService(BaseService):
 
     """
-    Get all the whitelist items.
+    Get all the active whitelist items.
+
+    This is currently used to build a cache.
     """
 
     data_storage = None
@@ -27,14 +29,11 @@ class WhitelistGetGlobalService(BaseService):
 
     def execute(self) -> list | Exception:
         try:
-            response = self.data_storage.get_global()
+            response = self.data_storage.get_active()
 
-            batch = response.batch()
+            document = next(response, None)
 
-            if not len(batch):
-                self.logger.debug(f'No whitelist item found')
-
-            return list(batch)
+            return document
 
         except WhitelistStorageGetException as e:
             self.logger.error(f'Cannot get all the whitelist items')

@@ -27,7 +27,7 @@ class TicketItemErrorCode:
 
 class TicketItemErrorMessage:
 
-    GENERIC = 'Error during the creation of the ticket item.'
+    GENERIC = 'Generic error.'
 
     TICKET_ITEM_NOT_FOUND = 'Ticket item not found.'
 

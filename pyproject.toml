@@ -1,12 +1,5 @@
 [build-system]
 requires = [
     "setuptools>=54",
-    "setuptools-rust"
 ]
 build-backend = "setuptools.build_meta"
-
-[[tool.setuptools-rust.ext-modules]]
-target = "rs_cidr_verifier"
-path = "src/piracyshield_service/whitelist/cidr/Cargo.toml"
-binding = "PyO3"
-py-limited-api = "auto"

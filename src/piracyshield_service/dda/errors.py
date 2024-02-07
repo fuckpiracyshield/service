@@ -17,13 +17,15 @@ class DDAErrorCode:
 
     NON_VALID_ACCOUNT_ROLE = '7007'
 
-    INSTANCE_EXISTS = '7008'
+    UNKNOWN_DDA_IDENTIFIER = '7008'
 
-    CANNOT_REMOVE = '7009'
+    INSTANCE_EXISTS = '7009'
 
-    INSTANCE_USED = '7010'
+    CANNOT_REMOVE = '7010'
 
-    CANNOT_SET_STATUS = '7011'
+    INSTANCE_USED = '7011'
+
+    CANNOT_SET_STATUS = '7012'
 
 class DDAErrorMessage:
 
@@ -42,6 +44,8 @@ class DDAErrorMessage:
     NON_VALID_ACCOUNT_ID = 'Non valid account identifier.'
 
     NON_VALID_ACCOUNT_ROLE = 'Account with wrong role. Only Reporter accounts are allowed to obtain and use a DDA instance.'
+
+    UNKNOWN_DDA_IDENTIFIER = 'DDA identifier not found.'
 
     INSTANCE_EXISTS = 'This item has been already created.'
 

@@ -37,6 +37,12 @@ class TicketErrorCode:
 
     TICKET_NOT_FOUND = '4017'
 
+    TOO_MANY_FQDN = '4018'
+
+    TOO_MANY_IPV4 = '4019'
+
+    TOO_MANY_IPV6 = '4020'
+
 class TicketErrorMessage:
 
     GENERIC = 'Error during the handling of the ticket.'
@@ -74,3 +80,9 @@ class TicketErrorMessage:
     REPORT_ERROR_TIME_EXCEEDED = 'Cannot create the ticket, exceeded max error reporting time.'
 
     TICKET_NOT_FOUND = 'Ticket not found.'
+
+    TOO_MANY_FQDN = 'Too many ticket FQDN items.'
+
+    TOO_MANY_IPV4 = 'Too many IPv4 items.'
+
+    TOO_MANY_IPV6 = 'Too many IPv6 items.'

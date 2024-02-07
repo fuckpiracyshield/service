@@ -14,6 +14,10 @@ from piracyshield_data_model.whitelist.model import (
     WhitelistModelIPv4NonValidException,
     WhitelistModelIPv6MissingException,
     WhitelistModelIPv6NonValidException,
+    WhitelistModelCIDRIPv4MissingException,
+    WhitelistModelCIDRIPv4NonValidException,
+    WhitelistModelCIDRIPv6MissingException,
+    WhitelistModelCIDRIPv6NonValidException,
     WhitelistModelRegistrarMissingException,
     WhitelistModelRegistrarNonValidException,
     WhitelistModelASCodeMissingException,
@@ -121,6 +125,12 @@ class WhitelistCreateService(BaseService):
             case 'ipv6':
                 document['as_code'] = model.get('as_code')
 
+            case 'cidr_ipv4':
+                document['as_code'] = model.get('as_code')
+
+            case 'cidr_ipv6':
+                document['as_code'] = model.get('as_code')
+
         return document
 
     def _schedule_task(self):
@@ -158,6 +168,18 @@ class WhitelistCreateService(BaseService):
 
         except WhitelistModelIPv6NonValidException:
             raise ApplicationException(WhitelistErrorCode.NON_VALID_IPV6, WhitelistErrorMessage.NON_VALID_IPV6)
+
+        except WhitelistModelCIDRIPv4MissingException:
+            raise ApplicationException(WhitelistErrorCode.MISSING_CIDR_IPV4, WhitelistErrorMessage.MISSING_CIDR_IPV4)
+
+        except WhitelistModelCIDRIPv4NonValidException:
+            raise ApplicationException(WhitelistErrorCode.NON_VALID_CIDR_IPV4, WhitelistErrorMessage.NON_VALID_CIDR_IPV4)
+
+        except WhitelistModelCIDRIPv6MissingException:
+            raise ApplicationException(WhitelistErrorCode.MISSING_CIDR_IPV6, WhitelistErrorMessage.MISSING_CIDR_IPV6)
+
+        except WhitelistModelCIDRIPv6NonValidException:
+            raise ApplicationException(WhitelistErrorCode.NON_VALID_CIDR_IPV6, WhitelistErrorMessage.NON_VALID_CIDR_IPV6)
 
         except WhitelistModelRegistrarMissingException:
             raise ApplicationException(WhitelistErrorCode.MISSING_REGISTRAR, WhitelistErrorMessage.MISSING_REGISTRAR)

@@ -42,12 +42,6 @@ class ForensicCreateHashService(BaseService):
                 hash_string = hash_string
             )
 
-            # check for already inserted hashes strings
-            if self._hash_string_exists(hash_string):
-                raise ApplicationException(ForensicErrorCode.HASH_STRING_EXISTS, ForensicErrorMessage.HASH_STRING_EXISTS)
-
-            self.logger.info(f'Created new hash `{hash_string}` for ticket `{ticket_id}`')
-
             document = self._build_document(
                 model = model,
                 forensic_id = self._generate_forensic_id(),
@@ -55,6 +49,20 @@ class ForensicCreateHashService(BaseService):
                 created_by = reporter_id,
                 now = Time.now_iso8601()
             )
+
+            # let's search for a pre-existent hash
+            existent_hash = self._hash_string_exists(hash_string)
+
+            # we got one, let's update our new entry with those values
+            if existent_hash:
+                if 'archive_name' in existent_hash:
+                    document['archive_name'] = existent_hash.get('archive_name')
+
+                if 'status' in existent_hash:
+                    document['status'] = existent_hash.get('status')
+
+                if 'reason' in existent_hash:
+                    document['reason'] = existent_hash.get('reason')
 
             try:
                 self.data_storage.insert(document)
@@ -64,6 +72,8 @@ class ForensicCreateHashService(BaseService):
 
                 raise ApplicationException(ForensicErrorCode.GENERIC, ForensicErrorMessage.GENERIC, e)
 
+            self.logger.info(f'Created hash `{hash_string}` for ticket `{ticket_id}`')
+
         return True
 
     def _hash_string_exists(self, hash_string: str) -> bool | Exception:
@@ -72,12 +82,14 @@ class ForensicCreateHashService(BaseService):
                 hash_string = hash_string
             )
 
-            if response.next():
-                self.logger.debug(f'Hash string found for `{hash_string}`')
+            if response.empty():
+                return False
 
-                return True
+            self.logger.debug(f'Found pre-existent hash for `{hash_string}`')
 
-            return False
+            document = next(response, None)
+
+            return document
 
         except ForensicStorageGetException as e:
             self.logger.error(f'Could not verify `{hash_string}` existence')

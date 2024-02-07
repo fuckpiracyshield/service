@@ -8,10 +8,10 @@ from piracyshield_data_storage.account.storage import AccountStorageGetException
 
 from piracyshield_service.account.errors import AccountErrorCode, AccountErrorMessage
 
-class AccountExistsByIdentifierService(BaseService):
+class AccountGetActiveService(BaseService):
 
     """
-    Checks if an account with this identifier exists.
+    Fetches all active accounts.
     """
 
     data_storage = None
@@ -26,21 +26,21 @@ class AccountExistsByIdentifierService(BaseService):
 
         super().__init__()
 
-    def execute(self, account_id: str) -> bool | Exception:
+    def execute(self) -> list | Exception:
         try:
-            response = self.data_storage.exists_by_identifier(
-                identifier = account_id
-            )
+            response = self.data_storage.get_active()
 
             batch = response.batch()
 
-            if len(batch):
-                return True
+            if not len(batch):
+                self.logger.debug(f'No account found')
 
-            return False
+                raise ApplicationException(AccountErrorCode.ACCOUNT_NOT_FOUND, AccountErrorMessage.ACCOUNT_NOT_FOUND)
+
+            return list(batch)
 
         except AccountStorageGetException as e:
-            self.logger.error(f'Could not verify if an account exists with the identifier `{account_id}`')
+            self.logger.error(f'Could not retrieve any account')
 
             raise ApplicationException(AccountErrorCode.GENERIC, AccountErrorMessage.GENERIC, e)
 

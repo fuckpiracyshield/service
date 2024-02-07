@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from piracyshield_service.base import BaseService
 
+from piracyshield_component.config import Config
 from piracyshield_component.utils.time import Time
 from piracyshield_component.exception import ApplicationException
 
@@ -9,13 +10,15 @@ from piracyshield_data_model.forensic.archive.model import ForensicArchiveModel,
 
 from piracyshield_data_storage.forensic.storage import ForensicStorage, ForensicStorageCreateException, ForensicStorageGetException, ForensicStorageUpdateException
 
-from piracyshield_service.log.ticket.create import LogTicketCreateService
+from piracyshield_data_storage.cache.storage import CacheStorage
 
-from piracyshield_service.importer.save_file import ImporterSaveFileService
+from piracyshield_service.log.ticket.create import LogTicketCreateService
 
 from piracyshield_service.forensic.tasks.analyze_forensic_archive import analyze_forensic_archive_task_caller
 
 from piracyshield_service.forensic.errors import ForensicErrorCode, ForensicErrorMessage
+
+import os
 
 class ForensicCreateArchiveService(BaseService):
 
@@ -27,9 +30,13 @@ class ForensicCreateArchiveService(BaseService):
 
     log_ticket_create_service = None
 
+    data_storage_cache = None
+
     data_storage = None
 
     data_model = None
+
+    application_archive_config = None
 
     def __init__(self):
         """
@@ -38,9 +45,11 @@ class ForensicCreateArchiveService(BaseService):
 
         super().__init__()
 
+        self._prepare_configs()
+
         self._prepare_modules()
 
-    def execute(self, ticket_id: str, archive_name: str, archive_content: bytes) -> bool | Exception:
+    def execute(self, ticket_id: str, archive_name: str) -> bool | Exception:
         """
         :param ticket_id: the ticket identifier related to the archive.
         :param archive_name: the name of the archive.
@@ -54,19 +63,24 @@ class ForensicCreateArchiveService(BaseService):
         if not self._ticket_id_exists(ticket_id):
             raise ApplicationException(ForensicErrorCode.NO_HASH_FOR_TICKET, ForensicErrorMessage.NO_HASH_FOR_TICKET)
 
-        # put the file in cache
-        cache_filename = self.importer_save_file_service.execute(
-            filename = model.get('name'),
-            content = archive_content
-        )
+        # the file is already in the cache
+        if not self.data_storage_cache.exists(archive_name):
+            self.logger.debug(f'Forensic evidence `{archive_name}` not found in cache')
 
-        self.logger.debug(f'Forensic evidence `{cache_filename}` moved to cache for ticket `{ticket_id}`')
+            raise ApplicationException(ForensicErrorCode.GENERIC, ForensicErrorMessage.GENERIC)
+
+        extension = self._get_extension(archive_name)
+
+        if self._has_supported_extension(extension) == False:
+            raise ApplicationException(ForensicErrorCode.EXTENSION_NOT_SUPPORTED, ForensicErrorMessage.EXTENSION_NOT_SUPPORTED)
+
+        self.logger.debug(f'New forensic evidence `{archive_name}` in cache for ticket `{ticket_id}`')
 
         try:
             # update ticket with the archive name
             self.data_storage.update_archive_name(
                 ticket_id = ticket_id,
-                archive_name = cache_filename,
+                archive_name = archive_name,
                 status = model.get('status'),
                 updated_at = Time.now_iso8601()
             )
@@ -114,6 +128,28 @@ class ForensicCreateArchiveService(BaseService):
 
             raise ApplicationException(ForensicErrorCode.GENERIC, ForensicErrorMessage.GENERIC, e)
 
+    def _get_extension(self, filename: str) -> str:
+        """
+        Extracts the extension from the filename.
+
+        :param filename: the name of the file.
+        :return: the extension of the file.
+        """
+
+        _, extension = os.path.splitext(filename)
+
+        return extension
+
+    def _has_supported_extension(self, extension: str) -> bool:
+        """
+        Checks wether the extension is supported.
+
+        :param extension: the extension of the file.
+        :return: true if supported.
+        """
+
+        return extension.lower() in self.application_archive_config.get('supported_extensions')
+
     def _schedule_task(self, ticket_id: str) -> bool | Exception:
         """
         Schedules the archive analysis.
@@ -155,10 +191,14 @@ class ForensicCreateArchiveService(BaseService):
             return model.to_dict()
 
         except ForensicArchiveModelNameException:
-            raise ApplicationException(ForensicErrorCode.ARCHIVE_NAME, TicketErrorMessage.ARCHIVE_NAME)
+            raise ApplicationException(ForensicErrorCode.ARCHIVE_NAME, ForensicErrorMessage.ARCHIVE_NAME)
 
-    def _prepare_configs(self):
-        pass
+    def _prepare_configs(self) -> None:
+        """
+        Loads the configs.
+        """
+
+        self.application_archive_config = Config('application').get('archive')
 
     def _prepare_modules(self):
         """
@@ -169,6 +209,6 @@ class ForensicCreateArchiveService(BaseService):
 
         self.data_storage = ForensicStorage()
 
-        self.importer_save_file_service = ImporterSaveFileService()
+        self.data_storage_cache = CacheStorage()
 
         self.log_ticket_create_service = LogTicketCreateService()

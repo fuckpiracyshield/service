@@ -6,7 +6,7 @@ from piracyshield_component.exception import ApplicationException
 
 from piracyshield_data_storage.whitelist.storage import WhitelistStorage, WhitelistStorageGetException
 
-from piracyshield_service.ticket.errors import TicketErrorCode, TicketErrorMessage
+from piracyshield_service.whitelist.errors import WhitelistErrorCode, WhitelistErrorMessage
 
 class WhitelistExistsByValueService(BaseService):
 

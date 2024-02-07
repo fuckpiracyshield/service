@@ -32,19 +32,9 @@ class TicketAutocloseTask(BaseTask):
         # TODO: must check if the ticket exists.
 
         # change status
-        try:
-            self.ticket_storage.update_status(
-                ticket_id = self.ticket_id,
-                ticket_status = TicketStatusModel.CLOSED.value
-            )
-
-        except TicketStorageUpdateException:
-            self.logger.error(f'Could not update the ticket `{self.ticket_id}`')
-
-        # log the operation
-        self.log_ticket_create_service.execute(
+        self.ticket_storage.update_status(
             ticket_id = self.ticket_id,
-            message = f'Changed status to `{TicketStatusModel.CLOSED.value}`.'
+            ticket_status = TicketStatusModel.CLOSED.value
         )
 
     def before_run(self):
@@ -56,10 +46,19 @@ class TicketAutocloseTask(BaseTask):
         self.log_ticket_create_service = LogTicketCreateService()
 
     def after_run(self):
-        pass
+        # log the operation
+        self.log_ticket_create_service.execute(
+            ticket_id = self.ticket_id,
+            message = f'Changed status to `{TicketStatusModel.CLOSED.value}`.'
+        )
 
     def on_failure(self):
-        pass
+        self.logger.error(f'Could not update the ticket `{self.ticket_id}`')
+
+        self.ticket_storage.update_status(
+            ticket_id = self.ticket_id,
+            ticket_status = TicketStatusModel.CREATED.value
+        )
 
 def ticket_autoclose_task_caller(**kwargs):
     t = TicketAutocloseTask(**kwargs)

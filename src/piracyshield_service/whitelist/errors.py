@@ -17,21 +17,29 @@ class WhitelistErrorCode:
 
     NON_VALID_IPV6 = '6007'
 
-    MISSING_REGISTRAR = '6008'
+    MISSING_CIDR_IPV4 = '6008'
 
-    NON_VALID_REGISTRAR = '6009'
+    NON_VALID_CIDR_IPV4 = '6009'
 
-    MISSING_AS_CODE = '6010'
+    MISSING_CIDR_IPV6 = '6010'
 
-    NON_VALID_AS_CODE = '6011'
+    NON_VALID_CIDR_IPV6 = '6011'
 
-    ITEM_EXISTS = '6012'
+    MISSING_REGISTRAR = '6012'
 
-    ITEM_HAS_TICKET = '6013'
+    NON_VALID_REGISTRAR = '6013'
 
-    CANNOT_REMOVE = '6014'
+    MISSING_AS_CODE = '6014'
 
-    CANNOT_SET_STATUS = '6015'
+    NON_VALID_AS_CODE = '6015'
+
+    ITEM_EXISTS = '6016'
+
+    ITEM_HAS_TICKET = '6017'
+
+    CANNOT_REMOVE = '6018'
+
+    CANNOT_SET_STATUS = '6019'
 
 class WhitelistErrorMessage:
 
@@ -51,9 +59,17 @@ class WhitelistErrorMessage:
 
     NON_VALID_IPV6 = 'Non valid IPv6.'
 
+    MISSING_CIDR_IPV4 = 'Missing CIDR IPv4 class'
+
+    NON_VALID_CIDR_IPV4 = 'Non valid CIDR IPv4 class'
+
+    MISSING_CIDR_IPV6 = 'Missing CIDR IPv6 class'
+
+    NON_VALID_CIDR_IPV6 = 'Non valid CIDR IPv6 class'
+
     MISSING_REGISTRAR = 'Missing registrar.'
 
-    NON_VALID_REGISTRAR = 'Non valid registrar. A registrar must be a string (allowed characters: ` -`)'
+    NON_VALID_REGISTRAR = 'Non valid registrar. A registrar must be a string (allowed characters: ` .,-_`)'
 
     MISSING_AS_CODE = 'Missing AS code.'
 
